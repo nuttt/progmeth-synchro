@@ -14,6 +14,8 @@ public class FactoryBelt implements Runnable {
 
 	private JTextField allBottle, beltBottle[];
 	private boolean isFactoryRunning, isBeltRunning[];
+	
+	//use for notifying belt thread
 	private Object beltLock[];
 
 	public static void main(String[] args) {
@@ -163,6 +165,7 @@ public class FactoryBelt implements Runnable {
 		frame.setVisible(true);
 	}
 
+	//Factory Thread
 	public void run() {
 		try {
 			while (true) {
@@ -186,6 +189,7 @@ public class FactoryBelt implements Runnable {
 		}
 	}
 
+	//Toggleing belt 
 	class BeltListener implements ActionListener {
 		int id;
 

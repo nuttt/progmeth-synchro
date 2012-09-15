@@ -1,14 +1,20 @@
+/*
+ * synchro
+ * 5431010121
+ * Nuttapon Pattanavijit
+ */
+
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 
 public class FactoryBelt implements Runnable {
 
 	private JTextField allBottle, beltBottle[];
 	private boolean isFactoryRunning, isBeltRunning[];
+	private Object beltLock[];
 
 	public static void main(String[] args) {
 		FactoryBelt factory = new FactoryBelt();
@@ -23,46 +29,52 @@ public class FactoryBelt implements Runnable {
 		h.start();
 	}
 
-	public boolean getBeltStatus(int i) {
-		return isBeltRunning[i];
-	}
-	
-	public JTextField[] getBeltBottleArray()
-	{
-		return beltBottle;
-	}
 	public FactoryBelt() {
-		isBeltRunning = new boolean[3];
-		beltBottle = new JTextField[3];
+		this.beltBottle = new JTextField[3];
+		this.isBeltRunning = new boolean[3];
+		this.beltLock = new Object[3];
+		beltLock[1] = new Object();
+		beltLock[2] = new Object();
 	}
 
-	public synchronized void increaseFactoryBottle() {
-		allBottle.setText(getFactoryBottle() + 1 + "");
+	public synchronized boolean increaseFactoryBottle() {
+		int bottle = getFactoryBottle();
+		if (bottle >= 50)
+			return false;
+		allBottle.setText(bottle + 1 + "");
+		notifyAll();
+		return true;
 	}
-	
+
 	public synchronized boolean decreaseFactoryBottle() {
-		if(getFactoryBottle() > 0)
-		{
-			allBottle.setText(getFactoryBottle() - 1 + "");
-			synchronized (allBottle) {
-				allBottle.notifyAll();
-			}
-			return true;
-		}
-		return false;
-	}
-	
-	public synchronized void increaseBeltBottle(int id) {
-		beltBottle[id].setText(Integer.parseInt(beltBottle[id].getText()) + 1 + "");
+		int bottle = getFactoryBottle();
+		if (bottle <= 0)
+			return false;
+		allBottle.setText(bottle - 1 + "");
+		notifyAll();
+		return true;
 	}
 
-	public int getFactoryBottle() {
+	private synchronized int getFactoryBottle() {
 		return Integer.parseInt(allBottle.getText());
 	}
 
-	public void createGUI() {
+	public Object getBeltLockObject(int id) {
+		return beltLock[id];
+	}
 
+	public boolean getIsBeltRunning(int id) {
+		return isBeltRunning[id];
+	}
+
+	public void increaseBelt(int id) {
+		int belt = Integer.parseInt(beltBottle[id].getText());
+		beltBottle[id].setText(belt + 1 + "");
+	}
+
+	public void createGUI() {
 		// Initial Frame
+		final FactoryBelt factory = this;
 		JFrame.setDefaultLookAndFeelDecorated(true);
 		JFrame frame = new JFrame();
 		frame.setPreferredSize(new Dimension(320, 320));
@@ -99,16 +111,16 @@ public class FactoryBelt implements Runnable {
 		JButton factoryStart = new JButton();
 		factoryStart.setPreferredSize(new Dimension(140, 30));
 		factoryStart.setText("Toggle Factory");
+
 		factoryStart.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
+			public void actionPerformed(ActionEvent e) {
 				isFactoryRunning = !isFactoryRunning;
-				System.out.println("now factory is "+ isFactoryRunning);
-				synchronized (allBottle) {
-					allBottle.notifyAll();
+				synchronized (factory) {
+					factory.notifyAll();
 				}
-				
 			}
 		});
+
 		// Belt1 filed
 		beltBottle[1] = new JTextField();
 		beltBottle[1].setPreferredSize(new Dimension(140, 20));
@@ -154,34 +166,26 @@ public class FactoryBelt implements Runnable {
 	public void run() {
 		try {
 			while (true) {
-				if (!isFactoryRunning) {
-						System.out.println("waiting");
-						synchronized (allBottle) {
-							allBottle.wait();
-						}
-						System.out.println("stop waiting");
-				} else if (getFactoryBottle() < 50)
-					this.increaseFactoryBottle();
-				else {
+				if (!isFactoryRunning)
+					synchronized (this) {
+						wait();
+					}
+				else if (!increaseFactoryBottle()) {
 					while (true) {
-						synchronized (allBottle) {
-							allBottle.wait();
-							System.out.println("get someone take bottle");
+						synchronized (this) {
+							wait();
 						}
-						if (getFactoryBottle() < 30)
+						if (getFactoryBottle() <= 30)
 							break;
 					}
 				}
-
-				Thread.sleep(150);
+				Thread.sleep(100);
 			}
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 
-	// Inner Class for belt Toggle
 	class BeltListener implements ActionListener {
 		int id;
 
@@ -190,12 +194,10 @@ public class FactoryBelt implements Runnable {
 		}
 
 		@Override
-		public synchronized void actionPerformed(ActionEvent e) {
-			// TODO Auto-generated method stub
+		public void actionPerformed(ActionEvent e) {
 			isBeltRunning[id] = !isBeltRunning[id];
-			synchronized(beltBottle)
-			{
-				beltBottle.notifyAll();
+			synchronized (beltLock[id]) {
+				beltLock[id].notifyAll();
 			}
 		}
 

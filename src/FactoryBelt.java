@@ -5,8 +5,8 @@
  */
 
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 
 import javax.swing.*;
 
@@ -14,8 +14,8 @@ public class FactoryBelt implements Runnable {
 
 	private JTextField allBottle, beltBottle[];
 	private boolean isFactoryRunning, isBeltRunning[];
-	
-	//use for notifying belt thread
+
+	// use for notifying belt thread
 	private Object beltLock[];
 
 	public static void main(String[] args) {
@@ -77,7 +77,7 @@ public class FactoryBelt implements Runnable {
 	public void createGUI() {
 		// Initial Frame
 		final FactoryBelt factory = this;
-		JFrame.setDefaultLookAndFeelDecorated(true);
+		JFrame.setDefaultLookAndFeelDecorated(false);
 		JFrame frame = new JFrame();
 		frame.setPreferredSize(new Dimension(320, 320));
 		frame.setTitle("5431010121_synchro");
@@ -95,57 +95,65 @@ public class FactoryBelt implements Runnable {
 		JPanel topRightPanel = new JPanel();
 		JPanel bottomPanel = new JPanel();
 		JPanel emptyPanel = new JPanel();
-		topLeftPanel.setPreferredSize(new Dimension(140, 150));
-		topRightPanel.setPreferredSize(new Dimension(140, 150));
-		bottomPanel.setPreferredSize(new Dimension(140, 150));
+		topLeftPanel.setPreferredSize(new Dimension(130, 150));
+		topRightPanel.setPreferredSize(new Dimension(130, 150));
+		bottomPanel.setPreferredSize(new Dimension(130, 150));
 		emptyPanel.setPreferredSize(new Dimension(40, 150));
 		topLeftPanel.setLayout(new FlowLayout());
 		topRightPanel.setLayout(new FlowLayout());
 		bottomPanel.setLayout(new FlowLayout());
+		// topLeftPanel.setBackground(Color.RED);
+		// topRightPanel.setBackground(Color.BLUE);
+		// bottomPanel.setBackground(Color.GREEN);
 
 		// factory bottle field
 		allBottle = new JTextField();
-		allBottle.setPreferredSize(new Dimension(140, 20));
+		allBottle.setPreferredSize(new Dimension(130, 20));
 		allBottle.setEditable(false);
 		allBottle.setHorizontalAlignment((int) JTextField.CENTER_ALIGNMENT);
 		allBottle.setText("0");
 		// factory start button
-		JButton factoryStart = new JButton();
-		factoryStart.setPreferredSize(new Dimension(140, 30));
-		factoryStart.setText("Toggle Factory");
-
-		factoryStart.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				isFactoryRunning = !isFactoryRunning;
-				synchronized (factory) {
-					factory.notifyAll();
+		JToggleButton factoryStart = new JToggleButton();
+		factoryStart.setPreferredSize(new Dimension(130, 30));
+		factoryStart.setText("Run Factory");
+		factoryStart.addItemListener(new ItemListener() {
+			public void itemStateChanged(ItemEvent arg0) {
+				if (arg0.getStateChange() == ItemEvent.SELECTED) {
+					isFactoryRunning = true;
+					((JToggleButton) arg0.getSource()).setText("Stop Factory");
+					synchronized (factory) {
+						factory.notifyAll();
+					}
+				} else if (arg0.getStateChange() == ItemEvent.DESELECTED) {
+					isFactoryRunning = false;
+					((JToggleButton) arg0.getSource()).setText("Run Factory");
 				}
 			}
 		});
 
 		// Belt1 filed
 		beltBottle[1] = new JTextField();
-		beltBottle[1].setPreferredSize(new Dimension(140, 20));
+		beltBottle[1].setPreferredSize(new Dimension(130, 20));
 		beltBottle[1].setEditable(false);
 		beltBottle[1].setHorizontalAlignment((int) JTextField.CENTER_ALIGNMENT);
 		beltBottle[1].setText("0");
 		// belt1 start button
-		JButton belt1Start = new JButton();
-		belt1Start.setPreferredSize(new Dimension(140, 30));
-		belt1Start.setText("Toggle Belt 1");
-		belt1Start.addActionListener(new BeltListener(1));
+		JToggleButton belt1Start = new JToggleButton();
+		belt1Start.setPreferredSize(new Dimension(130, 30));
+		belt1Start.setText("Run Belt 1");
+		belt1Start.addItemListener(new BeltListener(1));
 
 		// Belt2 filed
 		beltBottle[2] = new JTextField();
-		beltBottle[2].setPreferredSize(new Dimension(140, 20));
+		beltBottle[2].setPreferredSize(new Dimension(130, 20));
 		beltBottle[2].setEditable(false);
 		beltBottle[2].setHorizontalAlignment((int) JTextField.CENTER_ALIGNMENT);
 		beltBottle[2].setText("0");
 		// belt1 start button
-		JButton belt2Start = new JButton();
-		belt2Start.setPreferredSize(new Dimension(140, 30));
-		belt2Start.setText("Toggle Belt 2");
-		belt2Start.addActionListener(new BeltListener(2));
+		JToggleButton belt2Start = new JToggleButton();
+		belt2Start.setPreferredSize(new Dimension(130, 30));
+		belt2Start.setText("Run Belt 2");
+		belt2Start.addItemListener(new BeltListener(2));
 
 		// Add component to panel
 		topLeftPanel.add(beltBottle[1]);
@@ -165,7 +173,7 @@ public class FactoryBelt implements Runnable {
 		frame.setVisible(true);
 	}
 
-	//Factory Thread
+	// Factory Thread
 	public void run() {
 		try {
 			while (true) {
@@ -189,19 +197,25 @@ public class FactoryBelt implements Runnable {
 		}
 	}
 
-	//Toggleing belt 
-	class BeltListener implements ActionListener {
+	// Toggling belt
+	class BeltListener implements ItemListener {
 		int id;
 
 		public BeltListener(int id) {
 			this.id = id;
 		}
 
-		@Override
-		public void actionPerformed(ActionEvent e) {
-			isBeltRunning[id] = !isBeltRunning[id];
-			synchronized (beltLock[id]) {
-				beltLock[id].notifyAll();
+		public void itemStateChanged(ItemEvent arg0) {
+			if (arg0.getStateChange() == ItemEvent.SELECTED) {
+				isBeltRunning[id] = true;
+				((JToggleButton) arg0.getSource()).setText("Stop Belt "+id);
+				synchronized (beltLock[id]) {
+					beltLock[id].notifyAll();
+				}
+			}
+			else if (arg0.getStateChange() == ItemEvent.DESELECTED) {
+				isBeltRunning[id] = false;
+				((JToggleButton) arg0.getSource()).setText("Run Belt "+id);
 			}
 		}
 
